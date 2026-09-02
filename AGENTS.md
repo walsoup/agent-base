@@ -22,19 +22,19 @@ Do not ask the user to write boilerplate code, configure raw JSON schemas, or im
 
 ## The Extension Seams
 
-The core plumbing of Agent Base is already solved. Direct your edits to the designated extension points:
+Here is a map of the repository and where changes should go:
 
-| Seam File | What It Does | What to do when adapting the agent |
+| File | Purpose | Notes |
 | :--- | :--- | :--- |
 | `src/agent/tools.js` | Tool registry. All capabilities the agent can invoke. | Add or replace tools matching the domain. Use `registerTool({...})`. |
 | `src/agent/systemPrompt.js` | Agent instructions and rules. Injected into the model every turn. | Set the agent's persona, operational rules, and step-by-step instructions. |
 | `src/state/state.js` | State and resource store. Displayed in the UI sidebar. | Update the state model to reflect the domain (containers, files, records). |
 | `public/index.html` | Browser interface dashboard. | Update title, icon, and the 3 suggestion chips to match the new agent. |
 | `test/verify.js` | Unit test suite. | Add verification tests for newly added tools and run `npm test`. |
-| `src/agent/loop.js` | Multi-turn agent loop. | Do not edit. Handles streaming, reasoning tags, error recovery, and approvals. |
-| `src/util/sse.js` | SSE stream manager. | Do not edit. Handles connection buffering and heartbeats. |
-| `src/agent/config.js` | AI model configuration. | Do not edit. Handles multi-provider support (OpenAI, Groq, Ollama). |
-| `src/server.js` | Express server. | Do not edit. Handles REST and SSE routing. |
+| `src/agent/loop.js` | Multi-turn agent loop. | Works fine out of the box. No real need to touch this unless you specifically want to hack loop mechanics. |
+| `src/util/sse.js` | SSE stream manager. | Works fine out of the box. Handles connection buffering and heartbeats. |
+| `src/agent/config.js` | AI model configuration. | Works fine out of the box. Handles multi-provider support (OpenAI, Groq, Ollama). |
+| `src/server.js` | Express server. | Works fine out of the box. Handles REST and SSE routing. |
 
 ---
 

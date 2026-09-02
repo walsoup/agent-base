@@ -102,7 +102,7 @@ Open [http://127.0.0.1:3700](http://127.0.0.1:3700) in your browser.
 │   8. Store results in history and repeat until finish    │
 └────────────────────────────┬─────────────────────────────┘
                              │
-              ┌──────────────┴──────────────┐
+              ┌──────��───────┴──────────────┐
               │                             │
     ┌─────────▼───────────┐       ┌─────────▼───────────┐
     │     Agent Tools     │       │     State Store     │
@@ -128,7 +128,7 @@ agent-base/
 │   │   ├── loop.js       # Multi-turn loop, streaming, and approval logic
 │   │   ├── tools.js      # Tool registry (where domain skills are added)
 │   │   ├── systemPrompt.js # Dynamic system prompt generator
-│   │   └── config.js     # Provider configuration (OpenAI, Groq, Ollama)
+│   │   └─�� config.js     # Provider configuration (OpenAI, Groq, Ollama)
 │   ├── state/
 │   │   └── state.js      # Environment state store and dry-run flag
 │   └── util/
@@ -142,9 +142,12 @@ agent-base/
 
 ---
 
-## Tool definitions
+## Manual developer guide
 
-Tools are registered in `src/agent/tools.js` using Zod schemas. Agent Base derives the OpenAI JSON schema automatically:
+If you want to write the code yourself without a coding assistant, you can hack on the codebase directly.
+
+### Adding tools manually
+Register tools in `src/agent/tools.js` using `registerTool`. You only need a Zod schema; Agent Base derives the OpenAI JSON schema automatically:
 
 ```javascript
 import { z } from 'zod';
@@ -158,10 +161,77 @@ registerTool({
     service_name: z.string().describe('Name of the service to restart')
   }),
   handler: async (args) => {
-    // Execution logic here
     return { ok: true, result: `Service ${args.service_name} restarted.` };
   }
 });
+```
+
+### Batch progress tools
+Batch tools can report progress back to the interface using the `context.onProgress` callback:
+
+```javascript
+registerTool({
+  name: 'batch_convert_files',
+  description: 'Convert a list of files with live progress feedback',
+  destructive: false,
+  schema: z.object({
+    files: z.array(z.string().min(1)).describe('Files to convert')
+  }),
+  handler: async (args, { onProgress }) => {
+    const total = args.files.length;
+    for (let i = 0; i < total; i++) {
+      if (onProgress) {
+        onProgress({
+          current: i + 1,
+          total,
+          item: args.files[i],
+          message: `Converting file ${i + 1}/${total}: ${args.files[i]}`
+        });
+      }
+      await processFile(args.files[i]);
+    }
+    return { ok: true, result: { count: total } };
+  }
+});
+```
+
+### Customizing state and system prompts
+You can edit `src/state/state.js` and `src/agent/systemPrompt.js` directly, or configure them programmatically:
+
+```javascript
+import { setSystemPromptBuilder } from './agent/systemPrompt.js';
+import { setInitialState } from './state/state.js';
+
+// Set a custom initial state model
+setInitialState({
+  servers: [{ id: 'srv-1', name: 'api-gateway', status: 'healthy' }]
+});
+
+// Override the dynamic prompt generator
+setSystemPromptBuilder((snapshot, dryRun) => {
+  return `You are a system monitoring agent. Operating in ${dryRun ? 'dry-run' : 'live'} mode.`;
+});
+```
+
+### REST API and SSE endpoints
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/state` | `GET` | Environment summary, active model, and dry-run flag |
+| `/api/setup` | `GET`, `POST` | Provider credentials and baseURL configuration |
+| `/api/config` | `GET`, `POST` | Runtime model and reasoning effort settings |
+| `/api/models` | `GET` | Dynamic model listing from the upstream provider |
+| `/api/snapshot` | `GET` | Full JSON state snapshot |
+| `/api/chat` | `POST` | Start run or inject mid-flight steering message |
+| `/api/stream/:runId` | `GET` | Real-time Server-Sent Events (SSE) stream |
+| `/api/approve` | `POST` | Approve or deny a pending destructive tool call |
+| `/api/dry-run` | `POST` | Toggle simulation or live armed execution mode |
+| `/api/cancel` | `POST` | Cancel active execution run via AbortController |
+| `/api/reset` | `POST` | Clear conversation history and active session state |
+
+### Running the test suite
+```bash
+npm test
 ```
 
 ---
