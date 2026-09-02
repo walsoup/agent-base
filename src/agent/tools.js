@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { getStateSnapshot, updateState, isDryRun } from '../state/state.js';
 import { auditLog } from '../util/log.js';
 
@@ -8,9 +9,9 @@ import { auditLog } from '../util/log.js';
  * {
  *   name: string,
  *   description: string,
- *   destructive: boolean, // if true and dryRun is false, triggers user approval modal
- *   parameters: object,  // JSON Schema for OpenAI function calling
- *   schema: z.ZodSchema, // Zod schema for runtime validation
+ *   destructive?: boolean, // if true and dryRun is false, triggers user approval modal
+ *   parameters?: object,  // Optional: JSON Schema for OpenAI function calling (auto-generated from schema if omitted)
+ *   schema: z.ZodSchema,  // Zod schema for runtime validation and automatic JSON schema derivation
  *   handler: async (args, context) => ({ ok: boolean, result?: any, error?: string })
  * }
  */
@@ -18,13 +19,11 @@ export const toolsRegistry = new Map();
 
 /**
  * Register a tool definition in the global registry.
+ * Automatically derives JSON Schema from the provided Zod schema if parameters are omitted.
  */
 export function registerTool(toolDef) {
   if (!toolDef.name || typeof toolDef.name !== 'string') {
     throw new Error('Tool must have a valid name string');
-  }
-  if (!toolDef.parameters || typeof toolDef.parameters !== 'object') {
-    throw new Error(`Tool "${toolDef.name}" must define JSON Schema parameters`);
   }
   if (!toolDef.schema) {
     throw new Error(`Tool "${toolDef.name}" must provide a Zod validation schema`);
@@ -32,7 +31,38 @@ export function registerTool(toolDef) {
   if (typeof toolDef.handler !== 'function') {
     throw new Error(`Tool "${toolDef.name}" must provide an async handler function`);
   }
-  toolsRegistry.set(toolDef.name, toolDef);
+
+  let parameters = toolDef.parameters;
+  if (!parameters && toolDef.schema) {
+    try {
+      parameters = zodToJsonSchema(toolDef.schema, { target: 'openAi' });
+      if (parameters && parameters.$schema) {
+        delete parameters.$schema;
+      }
+    } catch (_) {
+      parameters = { type: 'object', properties: {} };
+    }
+  }
+
+  toolsRegistry.set(toolDef.name, {
+    ...toolDef,
+    parameters: parameters || { type: 'object', properties: {} },
+    destructive: Boolean(toolDef.destructive)
+  });
+}
+
+/**
+ * Unregister a specific tool by name.
+ */
+export function unregisterTool(name) {
+  return toolsRegistry.delete(name);
+}
+
+/**
+ * Clear all tools from the registry.
+ */
+export function clearTools() {
+  toolsRegistry.clear();
 }
 
 // -------------------------------------------------------------

@@ -55,6 +55,22 @@ assert.strictEqual(cleaned.type, 'string');
 assert.deepStrictEqual(cleaned.enum, ['1', '2', '3']);
 assert.strictEqual(cleaned.properties.count.enum, undefined);
 
+// Test automatic parameter derivation (vibe coder experience)
+registerTool({
+  name: 'auto_schema_tool',
+  description: 'Test auto schema derivation',
+  schema: z.object({
+    query: z.string().describe('Search query'),
+    limit: z.number().optional().default(10)
+  }),
+  handler: async (args) => ({ ok: true, result: args })
+});
+
+const autoTool = toolsRegistry.get('auto_schema_tool');
+assert(autoTool);
+assert(autoTool.parameters.properties.query);
+toolsRegistry.delete('auto_schema_tool');
+
 console.log('   ✓ Tools registry and schemas verified.');
 
 // 2. Test State Manager & Dry Run Operations
@@ -144,13 +160,20 @@ assert(lastLog.tool);
 console.log('   ✓ Audit logger verified.');
 
 // 4. Test System Prompt Construction
-import { buildSystemPrompt } from '../src/agent/systemPrompt.js';
+import { buildSystemPrompt, setSystemPromptBuilder } from '../src/agent/systemPrompt.js';
 
 console.log('4. Testing System Prompt builder...');
 const prompt = await buildSystemPrompt();
 assert(prompt.includes('You are Agent Architect'));
 assert(prompt.includes('DRY RUN MODE: ON'));
 assert(prompt.includes('CURRENT ENVIRONMENT SNAPSHOT'));
+
+// Test custom prompt builder
+setSystemPromptBuilder((snapshot) => `Custom Agent Prompt for ${snapshot.workspace?.name}`);
+const customPrompt = await buildSystemPrompt();
+assert.strictEqual(customPrompt, 'Custom Agent Prompt for Live Workspace');
+setSystemPromptBuilder(null); // reset
+
 console.log('   ✓ System prompt builder verified.');
 
 // 5. Test SSE Manager

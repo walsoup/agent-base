@@ -1,5 +1,16 @@
 import { isDryRun, getStateSnapshot } from '../state/state.js';
 
+let customPromptBuilder = null;
+
+/**
+ * Register a custom prompt builder callback.
+ * 
+ * @param {(snapshot: Object, dryRun: boolean) => Promise<string> | string} builderFn
+ */
+export function setSystemPromptBuilder(builderFn) {
+  customPromptBuilder = builderFn;
+}
+
 /**
  * Builds dynamic system prompt incorporating current environment state and operational mode.
  * 
@@ -16,6 +27,10 @@ export async function buildSystemPrompt(customSnapshot = null) {
     } catch (err) {
       snapshot = { error: `Could not retrieve state snapshot: ${err.message}` };
     }
+  }
+
+  if (customPromptBuilder && typeof customPromptBuilder === 'function') {
+    return await customPromptBuilder(snapshot, dryRun);
   }
 
   const snapshotJson = JSON.stringify(snapshot, null, 2);

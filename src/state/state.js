@@ -1,6 +1,6 @@
 /**
  * Generic State and Operational Mode Management.
- * Replaces domain-specific state stores (such as Discord guild state) with a clean, extensible store.
+ * Extensible state store for custom agent resources, status, and dry-run simulation mode.
  */
 
 let dryRun = true;
@@ -66,6 +66,16 @@ export function updateState(updates) {
         lastModified: new Date().toISOString()
       }
     };
+  }
+  return JSON.parse(JSON.stringify(currentState));
+}
+
+/**
+ * Replace the current and default state with custom initial state.
+ */
+export function setInitialState(customState) {
+  if (typeof customState === 'object' && customState !== null) {
+    currentState = JSON.parse(JSON.stringify(customState));
   }
   return JSON.parse(JSON.stringify(currentState));
 }
