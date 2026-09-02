@@ -5,9 +5,86 @@
 [![OpenAI Compatible](https://img.shields.io/badge/API-OpenAI%20Compatible-412991?style=flat-square&logo=openai)](https://platform.openai.com/)
 [![Express](https://img.shields.io/badge/Server-Express%204-000000?style=flat-square&logo=express)](https://expressjs.com/)
 
-An autonomous, multi-turn AI agent framework with a modern web dashboard, real-time Server-Sent Events (SSE) streaming, Chain-of-Thought / reasoning token visualization, interactive safety approval gates, and mid-flight user steering.
+> **The hackable starter kit to vibe code your own autonomous AI agent.**
+> Clone it, drop in your own tools and skills, tweak the prompt, and voila — your own custom agent with a polished web UI, real-time reasoning streams, safety gates, and multi-model support in minutes.
 
-Extracted from [Discord Architect](https://github.com/walsoup/discord-architect) as a clean, domain-agnostic agent core ready to power any tool-calling or systems engineering workflow.
+---
+
+## 💡 Why this exists
+
+Whenever you want to build an AI agent for a specific task (DevOps, database operations, file transformations, web scraping, server management, personal assistant), **80% of the work is repetitive boilerplate plumbing**:
+
+- ❌ Re-implementing the multi-turn tool calling loop and token truncation.
+- ❌ Setting up Server-Sent Events (SSE) with heartbeat pinging and buffer replay for late frontend connections.
+- ❌ Building a frontend chat dashboard from scratch just to watch the agent think and act.
+- ❌ Parsing reasoning tokens (`thought`, `reasoning_content`, `<think>...</think>` tags) so thinking models look good.
+- ❌ Debugging upstream LLM quirks (e.g. Gemini concatenating JSON objects `}{` or repeating tool names).
+- ❌ Building interactive confirmation modals for destructive or dangerous actions.
+- ❌ Writing provider switching logic so you can swap between OpenAI, OpenRouter, Groq, and local Ollama/LM Studio models on the fly.
+
+**Agent Base gives you all the hard plumbing out of the box.** 
+
+It's not meant to be a rigid framework — **it's a foundation designed to be hacked on**. You replace the dummy tools with your own domain skills, write your instructions, and you're up and running.
+
+---
+
+## 🚀 How to vibe code your agent in 3 steps
+
+### Step 1: Add your tools (`src/agent/tools.js`)
+Use `registerTool` with [Zod](https://zod.dev/) validation to give your agent the skills it needs:
+
+```javascript
+import { z } from 'zod';
+import { registerTool } from './agent/tools.js';
+
+registerTool({
+  name: 'deploy_service',
+  description: 'Deploy a containerized microservice to production',
+  destructive: true, // Automatically triggers approval popup in Armed mode!
+  parameters: {
+    type: 'object',
+    properties: {
+      service_name: { type: 'string', description: 'Name of service to deploy' },
+      tag: { type: 'string', description: 'Container image tag' }
+    },
+    required: ['service_name', 'tag'],
+    additionalProperties: false
+  },
+  schema: z.object({
+    service_name: z.string().min(1),
+    tag: z.string().min(1)
+  }),
+  handler: async (args, context) => {
+    // Write your logic here — Docker, Cloud APIs, Shell commands, DB queries, etc.
+    const result = await deployToCluster(args.service_name, args.tag);
+    return { ok: true, result };
+  }
+});
+```
+
+### Step 2: Set your agent's persona & instructions (`src/agent/systemPrompt.js`)
+Tell your agent what its role is, what rules to follow, and how to approach problems:
+
+```javascript
+export async function buildSystemPrompt(snapshot) {
+  return `You are DevOps Agent, an autonomous infrastructure engineer.
+- Always inspect services with \`get_state\` before deploying.
+- Propose a plan before executing destructive operations.
+- When finished, call the \`finish\` tool with a concise summary.`;
+}
+```
+
+### Step 3: Run and vibe!
+```bash
+npm start
+```
+Open **[http://127.0.0.1:3700](http://127.0.0.1:3700)**. You now have:
+- A live chat interface with markdown formatting.
+- Streaming responses with expandable Chain-of-Thought thinking cards.
+- Live progress bars for batch tasks.
+- A model switcher (OpenAI, OpenRouter, Groq, Ollama, LM Studio) directly in the UI.
+- Dry-run simulation mode vs Armed live execution with interactive approval modals.
+- Mid-flight steering (type a new message while the agent is running to nudge its course).
 
 ---
 
@@ -26,7 +103,7 @@ Extracted from [Discord Architect](https://github.com/walsoup/discord-architect)
 │                   Express Server                         │
 │  • /api/chat     • /api/stream/:id   • /api/approve      │
 │  • /api/state    • /api/config       • /api/dry-run      │
-└────────────────────────────┬─────────────────────────────┘
+└───��────────────────────────┬─────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────┐
 │                 Autonomous Agent Loop                    │
@@ -44,60 +121,57 @@ Extracted from [Discord Architect](https://github.com/walsoup/discord-architect)
               ┌──────────────┴──────────────┐
               │                             │
     ┌─────────▼───────────┐       ┌─────────▼───────────┐
-    │  Registered Tools   │       │     State Store     │
-    │  • get_state        │       │  • Workspaces       │
-    │  • create_resource  │       │  • Resources        │
-    │  • delete_resource  │       │  • Tasks            │
-    │  • batch_tasks      │       │  • Dry-run toggle   │
-    │  • finish           │       └─────────────────────┘
-    └─────────────────────┘
+    │  Your Custom Tools  │       │     State Store     │
+    │  (Drop your skills  │       │  (Plug in your DB,  │
+    │   in tools.js)      │       │   files, or state)  │
+    └─────────────────────┘       └─────────────────────┘
 ```
 
 ---
 
-## 🌟 Key Features
+## 🌟 What you get out of the box
 
-### 1. Robust Multi-Turn Agent Loop (`src/agent/loop.js`)
-- **Autonomous Tool Resolution**: Executes consecutive tool calls until the agent calls `finish` or reaches iteration limits.
-- **Provider Resilience**: Automatic repair for upstream provider idiosyncrasies (e.g. Gemini repeated tool names like `get_stateget_state` or concatenated JSON objects like `{"a":1}{"b":2}`).
-- **Schema Safety**: Strict validation of every tool argument via [Zod](https://zod.dev/) before handlers run.
-- **Context Budget Truncation**: Safeguards against token explosion by safely truncating massive tool output strings.
+### 1. Robust Agent Execution Loop (`src/agent/loop.js`)
+- **Multi-turn dispatching**: Keeps calling tools and passing results back to the LLM until the agent reaches the `finish` tool or max iterations.
+- **Provider Resilience**: Automatic repair for upstream provider quirks (like Gemini concatenating JSON chunks `{"a":1}{"b":2}` or repeating tool names).
+- **Zod Validation**: Every tool argument is checked against a schema before your handler runs, avoiding silent type bugs.
+- **Output Truncation**: Safeguards against context window explosion by truncating massive tool output strings.
 
-### 2. Deep Reasoning & Live SSE Streaming
-- **Chain of Thought**: Automatically catches reasoning tokens (`reasoning_content`, `thought`, `delta.reasoning`) and inline `<think>...</think>` tags, rendering them in a collapsible, pulsing brain card.
+### 2. Deep Reasoning & SSE Streaming
+- **Chain of Thought**: Automatically catches thinking tokens (`reasoning_content`, `thought`, `delta.reasoning`, and inline `<think>...</think>` tags) and renders them in a collapsible, pulsing brain card in the UI.
 - **Live Progress Bars**: Long-running batch tools emit `onProgress({ current, total, item })` events that render live animated progress bars and item checkmarks in the UI.
 
-### 3. Safety First: Dry-Run & Approval Gates
-- **Dry-Run Simulation**: Mutations generate simulated IDs and return preview objects without modifying actual data.
-- **Armed Mode**: When live mode is enabled, any tool marked `destructive: true` pauses execution and displays an interactive modal with argument inspection and keyboard shortcuts (`Enter` to approve, `Esc` to deny).
+### 3. Safety: Dry-Run & Interactive Approval Gate
+- **Dry-Run Mode**: When dry-run is toggled ON in the top bar, operations return safe preview objects without touching live data.
+- **Armed Mode**: When dry-run is OFF, tools marked `destructive: true` automatically trigger a confirmation modal with argument inspection and keyboard shortcuts (`Enter` to approve, `Esc` to deny).
 
 ### 4. Mid-Flight Steering & Cancellation
-- **Mid-Flight User Steering**: Send instructions while the agent is iterating to nudge or correct its plan without wiping conversation history.
-- **Instant Cancellation**: Immediate abort handling via `AbortController` cleanly stops backend model calls.
+- **Nudge mid-run**: Send instructions while the agent is running to adjust course without losing context.
+- **Instant Abort**: Click Stop to cancel the active run cleanly via `AbortController`.
 
-### 5. Universal Model & Provider Support (`src/agent/config.js`)
-- Built-in presets for **OpenAI**, **OpenRouter**, **Groq**, **Ollama**, and **LM Studio**.
-- Dynamic `/models` discovery endpoint.
+### 5. Universal Provider Switching (`src/agent/config.js`)
+- One-click presets for **OpenAI**, **OpenRouter**, **Groq**, **Ollama**, and **LM Studio**.
 - Support for keyless local endpoints (`http://localhost:11434/v1` or `http://localhost:1234/v1`).
+- Dynamic `/models` endpoint discovery.
 - Configurable reasoning effort tiers (`none`, `low`, `medium`, `high`) for o1, o3-mini, and DeepSeek-R1.
 
 ---
 
-## 📁 Repository Structure
+## 📁 Project Structure
 
 ```
 agent-base/
-├── package.json          # Standalone npm configuration (zero discord.js dependencies)
-├── .env.example          # Environment variable template
-├── .gitignore            # Git exclusion rules
-├── README.md             # Project documentation
+├── package.json          # Clean dependencies (Express, OpenAI, Zod, Dotenv)
+├── .env.example          # Environment template
+├── .gitignore            # Clean git hygiene (no logs or secrets committed)
+├── README.md             # This guide
 ├── src/
-│   ├── server.js         # Express web server with REST and SSE endpoints
+│   ├── server.js         # Express web server with REST & SSE endpoints
 │   ├── agent/
 │   │   ├── config.js     # AI provider configuration & OpenAI SDK client
 │   │   ├── loop.js       # Core agent loop, streaming, steering, approvals
 │   │   ├── systemPrompt.js # Dynamic system prompt builder
-│   │   └── tools.js      # Tool registry, Zod validation, OpenAI schema export
+│   │   └── tools.js      # Tool registry (where you add your skills!)
 │   ├── state/
 │   │   └── state.js      # Generic environment state and dry-run manager
 │   └── util/
@@ -105,7 +179,7 @@ agent-base/
 │       ├── log.js        # Colored terminal and JSONL daily audit logger
 │       └── sse.js        # SSE manager with heartbeats and client replay buffer
 ├── public/
-│   ├── index.html        # Modern dark dashboard
+│   ├── index.html        # Modern dark dashboard UI
 │   ├── style.css         # Dark theme styling and animations
 │   └── app.js           # Client-side streaming, markdown, and DOM interaction
 └── test/
@@ -114,7 +188,7 @@ agent-base/
 
 ---
 
-## 🚀 Quick Start
+## ⚡ Quick Start
 
 ### 1. Clone & Install
 
@@ -132,7 +206,7 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
-Edit `.env` or set your keys directly through the **Setup & Config** button in the web UI:
+Or configure credentials directly through the **Setup & Config** button in the web UI.
 
 ```env
 OPENAI_API_KEY=your-api-key-here
@@ -142,7 +216,7 @@ OPENAI_REASONING_EFFORT=none
 PORT=3700
 ```
 
-### 3. Run Test Suite
+### 3. Run Tests
 
 Verify all registry tools, state management, schema sanitizers, and loop helpers:
 
@@ -150,7 +224,7 @@ Verify all registry tools, state management, schema sanitizers, and loop helpers
 npm test
 ```
 
-### 4. Start the Server
+### 4. Start the Agent
 
 ```bash
 npm start
@@ -160,94 +234,85 @@ Visit **[http://127.0.0.1:3700](http://127.0.0.1:3700)** in your browser.
 
 ---
 
-## 🛠️ Adding Custom Tools
+## 🛠️ Tool Examples to Copy & Paste
 
-Registering tools is simple with `registerTool` from `src/agent/tools.js`.
+Here are the 3 patterns you can use to add tools in `src/agent/tools.js`:
 
-### Example 1: Simple Inspection Tool
-
+### Pattern 1: Simple Read / Query Tool
 ```javascript
-import { z } from 'zod';
-import { registerTool } from './agent/tools.js';
-
 registerTool({
-  name: 'get_system_time',
-  description: 'Retrieve current server timestamp in UTC and ISO formats',
+  name: 'read_config_file',
+  description: 'Read and return contents of a local configuration file',
   destructive: false,
   parameters: {
     type: 'object',
-    properties: {},
-    additionalProperties: false
-  },
-  schema: z.object({}).passthrough(),
-  handler: async () => {
-    return { ok: true, result: { iso: new Date().toISOString(), timestamp: Date.now() } };
-  }
-});
-```
-
-### Example 2: Destructive Tool with Approval Gate
-
-```javascript
-registerTool({
-  name: 'drop_database_table',
-  description: 'Permanently drop a table from the database (DESTRUCTIVE).',
-  destructive: true, // Prompts user approval in Armed mode!
-  parameters: {
-    type: 'object',
     properties: {
-      table_name: { type: 'string', description: 'Table name to drop' }
+      file_path: { type: 'string', description: 'Path to configuration file' }
     },
-    required: ['table_name'],
+    required: ['file_path'],
     additionalProperties: false
   },
-  schema: z.object({
-    table_name: z.string().min(1)
-  }),
+  schema: z.object({ file_path: z.string().min(1) }),
   handler: async (args) => {
-    // Database drop logic here
-    return { ok: true, result: { dropped: args.table_name } };
+    const fs = await import('node:fs/promises');
+    const content = await fs.readFile(args.file_path, 'utf8');
+    return { ok: true, result: content };
   }
 });
 ```
 
-### Example 3: Batch Tool with Live Progress Reporting
-
+### Pattern 2: Destructive Action (Triggers Approval Modal in Armed Mode)
 ```javascript
 registerTool({
-  name: 'batch_convert_files',
-  description: 'Convert a list of files with live progress feedback',
+  name: 'delete_cloud_instance',
+  description: 'Permanently terminate a cloud virtual machine (DESTRUCTIVE).',
+  destructive: true, // <--- Prompts the user before executing in Armed mode!
+  parameters: {
+    type: 'object',
+    properties: {
+      instance_id: { type: 'string', description: 'Cloud instance ID to terminate' }
+    },
+    required: ['instance_id'],
+    additionalProperties: false
+  },
+  schema: z.object({ instance_id: z.string().min(1) }),
+  handler: async (args) => {
+    await terminateVM(args.instance_id);
+    return { ok: true, result: { terminated: args.instance_id } };
+  }
+});
+```
+
+### Pattern 3: Batch Tool (Renders Live Progress Bar in UI)
+```javascript
+registerTool({
+  name: 'batch_optimize_images',
+  description: 'Compress and optimize a list of images with live progress updates',
   destructive: false,
   parameters: {
     type: 'object',
     properties: {
-      files: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'File paths to convert'
-      }
+      images: { type: 'array', items: { type: 'string' }, description: 'Image paths' }
     },
-    required: ['files'],
+    required: ['images'],
     additionalProperties: false
   },
-  schema: z.object({
-    files: z.array(z.string().min(1))
-  }),
+  schema: z.object({ images: z.array(z.string().min(1)) }),
   handler: async (args, { onProgress }) => {
-    const total = args.files.length;
+    const total = args.images.length;
     for (let i = 0; i < total; i++) {
-      const file = args.files[i];
+      const img = args.images[i];
       if (onProgress) {
         onProgress({
           current: i + 1,
           total,
-          item: file,
-          message: `Converting file ${i + 1}/${total}: ${file}`
+          item: img,
+          message: `Optimizing image ${i + 1}/${total}: ${img}`
         });
       }
-      await doHeavyWork(file);
+      await optimize(img);
     }
-    return { ok: true, result: { converted: total } };
+    return { ok: true, result: { optimizedCount: total } };
   }
 });
 ```
@@ -270,21 +335,8 @@ registerTool({
 | `/api/cancel` | `POST` | Cancel active execution run via AbortController |
 | `/api/reset` | `POST` | Clear conversation history and active session state |
 
-### SSE Event Types
-
-- `reasoning_delta`: Emitted when thinking tokens arrive.
-- `assistant_delta`: Emitted when markdown content arrives.
-- `tool_call`: Emitted when a tool invocation begins.
-- `tool_progress`: Emitted during batch execution for real-time progress bar updates.
-- `tool_result`: Emitted when a tool finishes execution.
-- `approval_required`: Emitted when a destructive tool requires human confirmation.
-- `snapshot_updated`: Emitted when a tool alters state so the UI updates in real-time.
-- `steer`: Emitted when user sends mid-flight steering instructions.
-- `done`: Emitted when the run finishes.
-- `error`: Emitted on fatal execution errors.
-
 ---
 
 ## 📜 License
 
-MIT License. Free for open-source and commercial use.
+MIT License. Copyright (c) 2026 walsoup. Free to use, fork, and hack on!
