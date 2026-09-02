@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Architect</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- TOP BAR -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <div class="brand">
+          <span class="brand-icon">⚡</span>
+          <span class="brand-title">AGENT ARCHITECT</span>
+        </div>
+        <div class="server-badge" id="stateBadge">
+          <div class="server-avatar" id="stateAvatar">🤖</div>
+          <div class="server-info">
+            <span class="server-name" id="stateName">Connecting...</span>
+            <span class="server-meta" id="stateMeta">-- resources</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="top-bar-right">
+        <!-- MODEL SELECTOR / COMBO -->
+        <div class="model-picker-container" title="Select or type OpenAI-compatible model">
+          <span class="model-picker-label">MODEL:</span>
+          <div class="model-input-wrap">
+            <input
+              type="text"
+              id="modelInput"
+              list="modelList"
+              placeholder="gemini-3.7-flash"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <datalist id="modelList">
+              <option value="gemini-3.7-flash"></option>
+              <option value="gpt-4.1"></option>
+              <option value="gpt-4o"></option>
+              <option value="gpt-4o-mini"></option>
+              <option value="o1"></option>
+              <option value="o3-mini"></option>
+              <option value="claude-3-7-sonnet"></option>
+              <option value="meta-llama/llama-3.3-70b-instruct"></option>
+              <option value="deepseek/deepseek-chat"></option>
+            </datalist>
+            <button class="btn-picker-action" id="btnRefreshModels" title="Fetch available models from /models endpoint">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- REASONING TIER SELECTOR -->
+        <div class="reasoning-picker-container" title="Reasoning effort for o1, o3-mini, DeepSeek-R1, and thinking models">
+          <span class="reasoning-icon">🧠</span>
+          <select id="reasoningSelect" class="reasoning-select">
+            <option value="none">Reasoning: Default</option>
+            <option value="low">Low Effort</option>
+            <option value="medium">Medium Effort</option>
+            <option value="high">High Effort</option>
+          </select>
+        </div>
+
+        <!-- SETUP & PROVIDER SETTINGS BUTTON -->
+        <button class="btn-icon btn-setup-trigger" id="btnOpenSetup" title="Configure AI Provider &amp; Model Credentials">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span id="setupBtnLabel">Setup &amp; Config</span>
+        </button>
+
+        <div class="connection-status" id="connectionStatus">
+          <span class="status-dot"></span>
+          <span class="status-label">Online</span>
+        </div>
+        
+        <!-- DRY RUN TOGGLE -->
+        <div class="dry-run-control">
+          <label class="switch-container" title="When DRY RUN is ON, operations are simulated safely without making destructive changes.">
+            <input type="checkbox" id="dryRunToggle" checked />
+            <span class="switch-slider">
+              <span class="switch-label-on">DRY RUN</span>
+              <span class="switch-label-off">ARMED</span>
+            </span>
+          </label>
+        </div>
+
+        <button class="btn-icon" id="btnReset" title="Reset conversation history">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span>Reset</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN BODY: 2 PANES (LEFT SIDEBAR & CENTER CHAT) -->
+    <div class="main-content">
+      <!-- LEFT SIDEBAR: ENVIRONMENT RESOURCES & TOOLS -->
+      <aside class="sidebar-pane">
+        <div class="sidebar-header">
+          <span class="sidebar-title">WORKSPACE &amp; STATE</span>
+          <button class="btn-refresh" id="btnRefreshTree" title="Refresh state snapshot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          </button>
+        </div>
+
+        <div class="sidebar-scroll" id="stateTreeContainer">
+          <div class="loading-placeholder">Loading state snapshot...</div>
+        </div>
+
+        <!-- ACTIVE TOOLS DRAWER -->
+        <div class="roles-section">
+          <div class="roles-header" id="toolsHeaderToggle">
+            <span>REGISTERED TOOLS (<span id="toolsCount">0</span>)</span>
+            <span class="toggle-arrow" id="toolsToggleArrow">▾</span>
+          </div>
+          <div class="roles-list" id="toolsListContainer">
+            <!-- Dynamic tool chips -->
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER PANE: CHAT & ACTIVITY -->
+      <main class="chat-pane">
+        <div class="messages-container" id="messagesContainer">
+          <div class="welcome-card">
+            <h2>Welcome to Agent Architect</h2>
+            <p>I am your autonomous engineering agent loop. Provide a high-level goal, ask to inspect current state, or instruct me to execute actions and batch operations.</p>
+            <div class="suggestion-chips">
+              <button class="chip" data-prompt="Inspect current workspace state and summarize available resources.">🔍 Inspect Current State</button>
+              <button class="chip" data-prompt="Create a new service resource named 'auth-service' and a database 'user-db'.">📦 Create New Resources</button>
+              <button class="chip" data-prompt="Execute a batch task to verify and archive all active project tasks.">⚡ Batch Process Tasks</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- INPUT BAR -->
+        <div class="chat-input-bar">
+          <div class="input-wrapper">
+            <textarea
+              id="chatInput"
+              placeholder="Describe what you want the agent to do (e.g. 'Inspect state, add a Redis cache resource, and summarize')..."
+              rows="1"
+            ></textarea>
+            <button class="btn-cancel-run" id="btnCancelRun" style="display: none;" title="Stop / Cancel active run">
+              <span>⏹️ Stop</span>
+            </button>
+            <button class="btn-send" id="btnSend" disabled title="Send message (Enter)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
+          <div class="input-hint">
+            <span><strong>Enter</strong> to send &bull; <strong>Shift + Enter</strong> for newline &bull; Type while running to steer</span>
+            <span id="runStatusIndicator" class="run-status"></span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- FULL WEB SETUP & CONFIG WIZARD MODAL -->
+  <div class="modal-backdrop" id="setupModal" style="display: none;">
+    <div class="modal-box modal-box-setup">
+      <div class="modal-header">
+        <div class="modal-header-icon">🛠️</div>
+        <div class="modal-title-group">
+          <h3>Agent Provider &amp; Model Setup</h3>
+          <span class="modal-subtitle">Configure OpenAI, OpenRouter, Groq, or Local Provider Credentials</span>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Provider Presets:</label>
+          <div class="preset-chips">
+            <button type="button" class="preset-chip" data-base="" data-model="gpt-4.1">OpenAI Default</button>
+            <button type="button" class="preset-chip" data-base="https://openrouter.ai/api/v1" data-model="anthropic/claude-3.7-sonnet">OpenRouter</button>
+            <button type="button" class="preset-chip" data-base="https://api.groq.com/openai/v1" data-model="llama-3.3-70b-versatile">Groq</button>
+            <button type="button" class="preset-chip" data-base="http://localhost:11434/v1" data-model="llama3.2">Ollama (Local)</button>
+            <button type="button" class="preset-chip" data-base="http://localhost:1234/v1" data-model="local-model">LM Studio (Local)</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setupAIBaseURL">Base URL (OpenAI Proxy / Provider Endpoint):</label>
+          <input
+            type="text"
+            id="setupAIBaseURL"
+            class="form-input"
+            placeholder="e.g. https://openrouter.ai/api/v1 (leave blank for standard OpenAI)"
+          />
+          <span class="form-helper">Custom reverse proxy, OpenRouter, LiteLLM, Ollama, vLLM, or LocalAI.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setupAIApiKey">AI Provider API Key:</label>
+          <input
+            type="password"
+            id="setupAIApiKey"
+            class="form-input"
+            placeholder="sk-..."
+            autocomplete="off"
+          />
+          <span class="form-helper">Your OpenAI, OpenRouter, or provider key (optional for local models).</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setupAIModel">Default Model ID:</label>
+          <input
+            type="text"
+            id="setupAIModel"
+            class="form-input"
+            placeholder="gemini-3.7-flash"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setupAIReasoning">Reasoning Effort (for o1, o3-mini, R1, thinking models):</label>
+          <select id="setupAIReasoning" class="form-input">
+            <option value="none">None / Default</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal btn-deny" id="btnSetupClose">Close</button>
+        <button class="btn-modal btn-approve" id="btnSaveSetup">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTRUCTIVE ACTION APPROVAL MODAL -->
+  <div class="modal-backdrop" id="approvalModal" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header modal-header-destructive">
+        <div class="modal-alert-icon">⚠️</div>
+        <div class="modal-title-group">
+          <h3>Destructive Action Requires Approval</h3>
+          <span class="modal-subtitle">Live mutation mode is ARMED</span>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p>The agent is attempting to perform a destructive operation:</p>
+        <div class="action-highlight">
+          <span class="tool-tag" id="modalToolName">delete_resource</span>
+        </div>
+        <div class="args-preview-container">
+          <div class="args-label">Arguments:</div>
+          <pre class="args-code" id="modalToolArgs">{}</pre>
+        </div>
+        <p class="modal-warning-text">This action will modify or delete data in live mode.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal btn-deny" id="btnModalDeny">Deny (Esc)</button>
+        <button class="btn-modal btn-approve" id="btnModalApprove">Approve Action</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

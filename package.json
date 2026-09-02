@@ -1,0 +1,29 @@
+{
+  "name": "agent-base",
+  "version": "1.0.0",
+  "description": "Extensible, locally-run autonomous AI agent framework with live web UI, SSE streaming, reasoning display, tool progress, and provider switching",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/verify.js"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "openai",
+    "streaming",
+    "reasoning",
+    "tools",
+    "web-ui"
+  ],
+  "author": "walsoup",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "openai": "^4.86.1",
+    "zod": "^3.24.2"
+  }
+}
