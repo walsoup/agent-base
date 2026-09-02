@@ -15,6 +15,7 @@ const modelInput = document.getElementById('modelInput');
 const modelList = document.getElementById('modelList');
 const btnRefreshModels = document.getElementById('btnRefreshModels');
 const reasoningSelect = document.getElementById('reasoningSelect');
+const themeSelect = document.getElementById('themeSelect');
 const btnOpenSetup = document.getElementById('btnOpenSetup');
 const setupBtnLabel = document.getElementById('setupBtnLabel');
 const dryRunToggle = document.getElementById('dryRunToggle');
@@ -52,11 +53,20 @@ const btnModalDeny = document.getElementById('btnModalDeny');
 // Initialization
 // -------------------------------------------------------------
 async function init() {
+  initTheme();
   await fetchState();
   await fetchSnapshot();
   await fetchModels();
   setupEventListeners();
   autoResizeTextarea(chatInput);
+}
+
+function initTheme() {
+  const savedTheme = localStorage.getItem('agent-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  if (themeSelect) {
+    themeSelect.value = savedTheme;
+  }
 }
 
 // -------------------------------------------------------------
@@ -839,6 +849,15 @@ function setupEventListeners() {
       }
     });
   });
+
+  // Theme selector
+  if (themeSelect) {
+    themeSelect.addEventListener('change', () => {
+      const chosenTheme = themeSelect.value;
+      document.documentElement.setAttribute('data-theme', chosenTheme);
+      localStorage.setItem('agent-theme', chosenTheme);
+    });
+  }
 
   // DRY RUN Toggle
   dryRunToggle.addEventListener('change', async () => {

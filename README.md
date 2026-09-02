@@ -1,4 +1,4 @@
-# Agent Base
+# Agent Base ⚡
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-68a063?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
@@ -11,7 +11,7 @@ Clone this repository, describe the capabilities you want to your coding assista
 
 ---
 
-## Why this exists
+## 💡 Why this exists
 
 Building an agent for a specific task (DevOps, database operations, web scraping, personal workflows) usually stalls on the same repetitive plumbing:
 
@@ -27,7 +27,7 @@ Agent Base provides all of that plumbing in one place. Instead of building infra
 
 ---
 
-## Direct prompts to build your agent
+## 💬 Direct prompts to build your agent
 
 Open this repository in your AI coding assistant (Cursor, Claude Code, Windsurf, Copilot, or OpenCode) and ask it to adapt the codebase:
 
@@ -43,7 +43,7 @@ Your coding assistant reads `AGENTS.md`, registers tools in `src/agent/tools.js`
 
 ---
 
-## Quick start
+## ⚡ Quick start
 
 ### 1. Clone and install dependencies
 ```bash
@@ -73,14 +73,30 @@ Open [http://127.0.0.1:3700](http://127.0.0.1:3700) in your browser.
 
 ---
 
-## Architecture
+## 🎨 Built-in UI themes
+
+The web dashboard comes with 5 switchable themes accessible from the top bar or via the `data-theme` attribute:
+
+| Theme | Key | Aesthetic |
+| :--- | :--- | :--- |
+| **Midnight Dark** (Default) | `dark` | Deep slate gray and blurple |
+| **OLED Black** | `oled` | Pure pitch-black with emerald accents |
+| **Catppuccin Mocha** | `catppuccin` | Warm pastel mauve and lavender |
+| **Nord Frost** | `nord` | Arctic icy blues and cool slates |
+| **Paper Light** | `light` | Crisp high-contrast editorial light theme |
+
+Selected themes persist in `localStorage`. You can add custom palettes in `public/style.css` by defining a new `[data-theme="your-theme"]` block with CSS variables.
+
+---
+
+## 🏗️ Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                   Web Dashboard (UI)                     │
 │  • Model picker & presets      • Live SSE stream reader  │
 │  • Chain-of-thought view       • Batch progress bars     │
-│  • Resource explorer           • Interactive approval    │
+│  • Resource explorer           • Theme switcher (5 looks)│
 └────────────────────────────┬─────────────────────────────┘
                              │ HTTP / SSE
 ┌────────────────────────────▼─────────────────────────────┐
@@ -102,7 +118,7 @@ Open [http://127.0.0.1:3700](http://127.0.0.1:3700) in your browser.
 │   8. Store results in history and repeat until finish    │
 └────────────────────────────┬─────────────────────────────┘
                              │
-              ┌──────��───────┴──────────────┐
+              ┌──────────────┴──────────────┐
               │                             │
     ┌─────────▼───────────┐       ┌─────────▼───────────┐
     │     Agent Tools     │       │     State Store     │
@@ -113,7 +129,7 @@ Open [http://127.0.0.1:3700](http://127.0.0.1:3700) in your browser.
 
 ---
 
-## Directory structure
+## 📁 Directory structure
 
 ```
 agent-base/
@@ -128,21 +144,21 @@ agent-base/
 │   │   ├── loop.js       # Multi-turn loop, streaming, and approval logic
 │   │   ├── tools.js      # Tool registry (where domain skills are added)
 │   │   ├── systemPrompt.js # Dynamic system prompt generator
-│   │   └─�� config.js     # Provider configuration (OpenAI, Groq, Ollama)
+│   │   └── config.js     # Provider configuration (OpenAI, Groq, Ollama)
 │   ├── state/
 │   │   └── state.js      # Environment state store and dry-run flag
 │   └── util/
 │       ├── sse.js        # SSE manager with heartbeats and replay buffers
 │       ├── log.js        # Audit logging to daily JSONL files
 │       └── env.js        # .env persistence utilities
-├── public/               # Browser interface
+├── public/               # Browser interface (with theme switcher)
 └── test/
     └── verify.js         # Unit verification suite (run with npm test)
 ```
 
 ---
 
-## Manual developer guide
+## 🛠️ Manual developer guide
 
 If you want to write the code yourself without a coding assistant, you can hack on the codebase directly.
 
@@ -236,6 +252,6 @@ npm test
 
 ---
 
-## License
+## 📜 License
 
 MIT License. Copyright (c) 2026 walsoup.
