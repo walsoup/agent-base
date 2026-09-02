@@ -13,7 +13,7 @@ Clone this repository, describe the capabilities you want to your coding assista
 
 ## 💡 Why this exists
 
-Building an agent for a specific task (DevOps, database operations, web scraping, personal workflows) usually stalls on the same repetitive plumbing:
+Whenever you want to build an AI agent for a specific task (DevOps, database operations, file transformations, web scraping, server management, personal assistant), 70% of the work is repetitive boilerplate plumbing:
 
 - Writing the multi-turn tool execution loop and managing token context limits
 - Wiring Server-Sent Events (SSE) with heartbeat pings and event buffers for late connections
@@ -158,11 +158,9 @@ agent-base/
 
 ---
 
-## 🛠️ Manual developer guide
+## 🛠️ Guide
 
-If you want to write the code yourself without a coding assistant, you can hack on the codebase directly.
-
-### Adding tools manually
+### Adding tools
 Register tools in `src/agent/tools.js` using `registerTool`. You only need a Zod schema; Agent Base derives the OpenAI JSON schema automatically:
 
 ```javascript
