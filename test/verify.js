@@ -55,7 +55,7 @@ assert.strictEqual(cleaned.type, 'string');
 assert.deepStrictEqual(cleaned.enum, ['1', '2', '3']);
 assert.strictEqual(cleaned.properties.count.enum, undefined);
 
-// Test automatic parameter derivation (vibe coder experience)
+// Test automatic parameter derivation (developer experience)
 registerTool({
   name: 'auto_schema_tool',
   description: 'Test auto schema derivation',
