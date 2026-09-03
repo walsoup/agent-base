@@ -1,5 +1,7 @@
 # Agent Base ⚡
 
+[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/new?template_name=agent-base&template_owner=walsoup)
+
 [![Node.js](https://img.shields.io/badge/Node.js-20+-68a063?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 [![OpenAI Compatible](https://img.shields.io/badge/API-OpenAI%20Compatible-412991?style=flat-square&logo=openai)](https://platform.openai.com/)
@@ -45,7 +47,17 @@ Your coding assistant reads `AGENTS.md`, registers tools in `src/agent/tools.js`
 
 ## ⚡ Quick start
 
-### 1. Clone and install dependencies
+### 1. Create your repository and install dependencies
+Click the **[Use this template](https://github.com/new?template_name=agent-base&template_owner=walsoup)** button at the top of the GitHub page to create your own repository, then clone it:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/YOUR_AGENT_NAME.git
+cd YOUR_AGENT_NAME
+npm install
+```
+
+Or clone Agent Base directly:
+
 ```bash
 git clone https://github.com/walsoup/agent-base.git
 cd agent-base

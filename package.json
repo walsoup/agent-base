@@ -19,6 +19,14 @@
   ],
   "author": "walsoup",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/walsoup/agent-base.git"
+  },
+  "bugs": {
+    "url": "https://github.com/walsoup/agent-base/issues"
+  },
+  "homepage": "https://github.com/walsoup/agent-base#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^16.4.7",
