@@ -9,7 +9,7 @@ dotenv.config();
 
 import { updateEnvFile, readEnvFile } from './util/env.js';
 import { getStateSummary, getStateSnapshot, isDryRun, setDryRun } from './state/state.js';
-import { runAgent, resetConversation, resolveApproval, cancelRun, isSessionRunning, sendUserSteeringMessage } from './agent/loop.js';
+import { runAgent, resetConversation, getConversation, resolveApproval, cancelRun, isSessionRunning, sendUserSteeringMessage } from './agent/loop.js';
 import { getAIConfig, setAIConfig, fetchAvailableModels } from './agent/config.js';
 import { sseManager } from './util/sse.js';
 
@@ -172,6 +172,11 @@ app.get('/api/models', async (req, res) => {
       ]
     });
   }
+});
+
+// State Snapshot
+app.get('/api/history', (req, res) => {
+  res.json({ ok: true, history: getConversation(req.query.sessionId || 'default') });
 });
 
 // State Snapshot

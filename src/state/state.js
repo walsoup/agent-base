@@ -3,22 +3,21 @@
  * Extensible state store for custom agent resources, status, and dry-run simulation mode.
  */
 
-let dryRun = true;
+let dryRun = process.env.DRY_RUN === 'true';
 
 const DEFAULT_STATE = {
   workspace: {
-    name: 'Agent Workspace',
+    name: 'Code Sandbox Workspace',
     version: '1.0.0',
-    description: 'Local autonomous agent environment'
+    description: 'Sandboxed Python & React WebDev environment'
   },
   resources: [
-    { id: 'res_config', name: 'app.config.json', type: 'configuration', status: 'active' },
-    { id: 'res_pipeline', name: 'data-pipeline', type: 'service', status: 'ready' },
-    { id: 'res_db', name: 'local-datastore', type: 'database', status: 'connected' }
+    { id: 'res_python', name: 'python-runtime', type: 'python', status: 'ready' },
+    { id: 'res_react', name: 'react-environment', type: 'react', status: 'ready' }
   ],
   tasks: [
-    { id: 'task_001', title: 'Scaffold project template', status: 'completed' },
-    { id: 'task_002', title: 'Verify service dependencies', status: 'ready' }
+    { id: 'task_001', title: 'Initialize sandbox workspace', status: 'completed' },
+    { id: 'task_002', title: 'Ready for Python & React project generation', status: 'ready' }
   ],
   metadata: {
     createdAt: new Date().toISOString(),

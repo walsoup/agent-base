@@ -997,51 +997,142 @@ function escapeHtml(str) {
 }
 
 /**
- * Lightweight Markdown Parser
+ * Lightweight Block-Aware Markdown Parser
  */
 function renderMarkdown(md) {
   if (!md) return '';
-  let html = escapeHtml(md);
 
-  // Triple backtick Code blocks
-  html = html.replace(/```([a-z]*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    return `<pre><code>${code}</code></pre>`;
+  // 1. Extract and stash code blocks to avoid regex collisions inside code
+  const codeBlocks = [];
+  let text = md.replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(code.trimEnd())}</code></pre>`);
+    return `@@CODEBLOCK_${idx}@@`;
   });
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // 2. Escape HTML for the rest
+  text = escapeHtml(text);
 
-  // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // 3. Inline formatting
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  text = text.replace(/(^|[^\w])_([^_]+)_([^\w]|$)/g, '$1<em>$2</em>$3');
+  text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
 
-  // Italic
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // 4. Line and block processing
+  const lines = text.split(/\r?\n/);
+  const out = [];
+  let inUl = false;
+  let inOl = false;
 
-  // Headers
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  function closeLists() {
+    if (inUl) {
+      out.push('</ul>');
+      inUl = false;
+    }
+    if (inOl) {
+      out.push('</ol>');
+      inOl = false;
+    }
+  }
 
-  // Unordered list items
-  html = html.replace(/^\s*[-*]\s+(.*$)/gim, '<li>$1</li>');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
-  // Ordered list items
-  html = html.replace(/^\s*(\d+)\.\s+(.*$)/gim, '<li>$1</li>');
+    // Code block placeholder
+    if (trimmed.startsWith('@@CODEBLOCK_') && trimmed.endsWith('@@')) {
+      closeLists();
+      out.push(trimmed);
+      continue;
+    }
 
-  // Wrap loose lines in paragraphs
-  const paragraphs = html.split(/\n\n+/);
-  html = paragraphs
-    .map((p) => {
-      p = p.trim();
-      if (!p) return '';
-      if (p.startsWith('<h1>') || p.startsWith('<h2>') || p.startsWith('<h3>') || p.startsWith('<pre>') || p.startsWith('<li>')) {
-        return p;
+    // Blank line terminates active lists
+    if (!trimmed) {
+      closeLists();
+      continue;
+    }
+
+    // Headers
+    if (/^###\s+(.*)$/.test(trimmed)) {
+      closeLists();
+      out.push(`<h3>${trimmed.replace(/^###\s+/, '')}</h3>`);
+      continue;
+    }
+    if (/^##\s+(.*)$/.test(trimmed)) {
+      closeLists();
+      out.push(`<h2>${trimmed.replace(/^##\s+/, '')}</h2>`);
+      continue;
+    }
+    if (/^#\s+(.*)$/.test(trimmed)) {
+      closeLists();
+      out.push(`<h1>${trimmed.replace(/^#\s+/, '')}</h1>`);
+      continue;
+    }
+
+    // Blockquote
+    if (/^&gt;\s+(.*)$/.test(trimmed) || /^>\s+(.*)$/.test(trimmed)) {
+      closeLists();
+      out.push(`<blockquote>${trimmed.replace(/^(&gt;|>)\s+/, '')}</blockquote>`);
+      continue;
+    }
+
+    // Horizontal Rule
+    if (/^(---|___|\*\*\*)$/.test(trimmed)) {
+      closeLists();
+      out.push('<hr>');
+      continue;
+    }
+
+    // Unordered list item (- or *)
+    const ulMatch = line.match(/^\s*[-*]\s+(.*)$/);
+    if (ulMatch) {
+      if (inOl) {
+        out.push('</ol>');
+        inOl = false;
       }
-      return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-    })
-    .join('');
+      if (!inUl) {
+        out.push('<ul>');
+        inUl = true;
+      }
+      out.push(`<li>${ulMatch[1]}</li>`);
+      continue;
+    }
 
-  return html;
+    // Ordered list item (e.g. 1. Item text)
+    const olMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
+    if (olMatch) {
+      if (inUl) {
+        out.push('</ul>');
+        inUl = false;
+      }
+      if (!inOl) {
+        const startNum = parseInt(olMatch[1], 10);
+        out.push(startNum !== 1 ? `<ol start="${startNum}">` : '<ol>');
+        inOl = true;
+      }
+      // Use olMatch[2] to render the actual item content, not the number
+      out.push(`<li>${olMatch[2]}</li>`);
+      continue;
+    }
+
+    // Normal line / paragraph
+    closeLists();
+    out.push(`<p>${trimmed}</p>`);
+  }
+
+  closeLists();
+
+  let finalHtml = out.join('\n');
+
+  // 5. Reinsert stashed code blocks
+  finalHtml = finalHtml.replace(/@@CODEBLOCK_(\d+)@@/g, (_, idx) => {
+    return codeBlocks[parseInt(idx, 10)] || '';
+  });
+
+  return finalHtml;
 }
 
 // Start app on DOMContentLoaded

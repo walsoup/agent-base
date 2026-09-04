@@ -1,10 +1,13 @@
 import OpenAI from 'openai';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 let runtimeConfig = {
   apiKey: process.env.OPENAI_API_KEY || '',
   baseURL: process.env.OPENAI_BASE_URL || '',
-  model: process.env.OPENAI_MODEL || 'gemini-3.7-flash',
-  reasoningEffort: process.env.OPENAI_REASONING_EFFORT || 'none' // 'none', 'low', 'medium', 'high'
+  model: process.env.OPENAI_MODEL || 'LFM2.5-1.2B-Instruct-int4-cw@NPU',
+  reasoningEffort: process.env.OPENAI_REASONING_EFFORT || 'none'
 };
 
 /**
@@ -14,8 +17,8 @@ export function getAIConfig() {
   return {
     apiKey: runtimeConfig.apiKey || process.env.OPENAI_API_KEY || '',
     baseURL: runtimeConfig.baseURL || process.env.OPENAI_BASE_URL || '',
-    model: runtimeConfig.model || process.env.OPENAI_MODEL || 'gemini-3.7-flash',
-    reasoningEffort: runtimeConfig.reasoningEffort || 'none',
+    model: runtimeConfig.model || process.env.OPENAI_MODEL || 'LFM2.5-1.2B-Instruct-int4-cw@NPU',
+    reasoningEffort: runtimeConfig.reasoningEffort || process.env.OPENAI_REASONING_EFFORT || 'none',
     hasApiKey: Boolean(runtimeConfig.apiKey || process.env.OPENAI_API_KEY)
   };
 }

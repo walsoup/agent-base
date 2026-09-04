@@ -769,9 +769,31 @@ html, body {
   padding: 2px 4px;
   border-radius: 4px;
 }
+.message-bubble ul,
+.message-bubble ol {
+  margin: 6px 0 8px 0;
+  padding-left: 22px;
+}
+.message-bubble ul {
+  list-style-type: disc;
+}
+.message-bubble ol {
+  list-style-type: decimal;
+}
 .message-bubble li {
-  margin-left: 18px;
   margin-bottom: 4px;
+  line-height: 1.5;
+}
+.message-bubble blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  margin: 8px 0;
+  color: var(--text-muted);
+}
+.message-bubble hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 12px 0;
 }
 
 /* Thinking / Reasoning Card */

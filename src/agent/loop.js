@@ -194,10 +194,20 @@ export function parseAndSplitToolArguments(rawArgs) {
 /**
  * Ensure messages sent to OpenAI/Gemini contain 100% valid JSON arguments and no broken structures.
  */
-export function sanitizeMessagesForProvider(messages = []) {
+export function sanitizeMessagesForProvider(messages = [], isSmallOrNpu = false) {
   const sanitized = [];
 
   for (const msg of messages) {
+    if (msg.role === 'tool' && isSmallOrNpu) {
+      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+      const name = msg.name || 'tool';
+      sanitized.push({
+        role: 'user',
+        content: `[Tool Result for ${name}]: ${content}`
+      });
+      continue;
+    }
+
     if (msg.role === 'assistant' && Array.isArray(msg.tool_calls)) {
       const cleanToolCalls = [];
       for (const tc of msg.tool_calls) {
@@ -237,6 +247,160 @@ export function sanitizeMessagesForProvider(messages = []) {
   }
 
   return sanitized;
+}
+
+/**
+ * Fallback parser for text-based tool calls emitted by small models or non-native tool providers.
+ * Supports <tool_call> XML, bare JSON blocks, and Python-style tool_name(...) invocations.
+ */
+export function extractTextToolCalls(text) {
+  if (!text || typeof text !== 'string') return [];
+  const calls = [];
+  const knownTools = ['create_file', 'write_file', 'edit_file', 'delete_file', 'read_file', 'list_files', 'batch_write_files', 'run_command', 'get_state', 'finish'];
+
+  // 1. Tool Call XML blocks: <tool_call> ... </tool_call>
+  const toolCallXmlRegex = /<tool_call>([\s\S]*?)<\/tool_call>/gi;
+  let match;
+  while ((match = toolCallXmlRegex.exec(text)) !== null) {
+    const block = match[1].trim();
+
+    // Check JSON inside <tool_call>
+    try {
+      const obj = JSON.parse(block);
+      const name = obj.name || obj.tool || obj.function?.name;
+      const args = obj.arguments || obj.args || obj.parameters || obj;
+      if (name && knownTools.includes(resolveToolName(name))) {
+        calls.push({ name: resolveToolName(name), args: typeof args === 'string' ? JSON.parse(args) : args });
+        continue;
+      }
+    } catch (_) {}
+
+    // Check <function=NAME> ... </function>
+    const fnMatch = block.match(/<function=([a-zA-Z0-9_-]+)>([\s\S]*?)<\/function>/i);
+    if (fnMatch) {
+      const name = resolveToolName(fnMatch[1].trim());
+      const paramsBlock = fnMatch[2];
+      const args = {};
+
+      const p1Regex = /<parameter=([a-zA-Z0-9_-]+)>([\s\S]*?)<\/parameter>/gi;
+      let p1;
+      while ((p1 = p1Regex.exec(paramsBlock)) !== null) {
+        args[p1[1].trim()] = p1[2].trim();
+      }
+
+      const p2Regex = /<parameter\s+([a-zA-Z0-9_-]+)=["']([^"']+)["']>([\s\S]*?)<\/parameter>/gi;
+      let p2;
+      while ((p2 = p2Regex.exec(paramsBlock)) !== null) {
+        args[p2[1].trim()] = p2[2].trim();
+        const inner = p2[3].trim();
+        const contentMatch = inner.match(/<content>([\s\S]*?)<\/content>/i);
+        if (contentMatch) {
+          args.content = contentMatch[1].trim();
+        } else if (inner) {
+          args.content = inner;
+        }
+      }
+
+      if (args.path && args.path.includes('sandbox')) {
+        args.path = args.path.split('sandbox')[1].replace(/^[/\\]+/, '');
+      }
+      if (args.path && args.name) {
+        args.filePath = `${args.path}/${args.name}`;
+      } else if (args.path && !args.filePath) {
+        args.filePath = args.path;
+      } else if (args.name && !args.filePath) {
+        args.filePath = args.name;
+      }
+      calls.push({ name, args });
+      continue;
+    }
+  }
+
+  if (calls.length > 0) return calls;
+
+  // 2. Python style function calls: create_file( ... )
+  for (const tool of knownTools) {
+    const fnRegex = new RegExp(`\\b(${tool})\\s*\\(([\\s\\S]*?)\\)`, 'gi');
+    while ((match = fnRegex.exec(text)) !== null) {
+      const name = match[1];
+      const rawParams = match[2];
+      const args = {};
+
+      const paramRegex = /([a-zA-Z0-9_-]+)\s*=\s*(?:"""([\s\S]*?)"""|"([^"]*)"|'([^']*)'|([^\s,]+))/g;
+      let p;
+      while ((p = paramRegex.exec(rawParams)) !== null) {
+        const k = p[1];
+        const val = p[2] !== undefined ? p[2] : (p[3] !== undefined ? p[3] : (p[4] !== undefined ? p[4] : p[5]));
+        args[k] = val;
+      }
+
+      if (args.path && args.path.includes('sandbox')) {
+        args.path = args.path.split('sandbox')[1].replace(/^[/\\]+/, '');
+      }
+      if (args.path && args.name) {
+        args.filePath = `${args.path}/${args.name}`;
+      } else if (args.path && !args.filePath) {
+        args.filePath = args.path;
+      } else if (args.name && !args.filePath) {
+        args.filePath = args.name;
+      }
+
+      // If model omitted content param but gave markdown code or HTML in text
+      if (!args.content && text.includes('```html')) {
+        const htmlMatch = text.match(/```html\s*([\s\S]*?)\s*```/i);
+        if (htmlMatch) {
+          args.content = htmlMatch[1].trim();
+        }
+      } else if (!args.content && text.includes('<!DOCTYPE html>')) {
+        const htmlDocMatch = text.match(/<!DOCTYPE html>[\s\S]*?<\/html>/i);
+        if (htmlDocMatch) {
+          args.content = htmlDocMatch[0].trim();
+        }
+      }
+
+      if (Object.keys(args).length > 0) {
+        calls.push({ name, args });
+      }
+    }
+  }
+
+  if (calls.length > 0) return calls;
+
+  // 3. Code block extraction fallback: when small models emit ```html or ```python without calling create_file
+  const codeBlockRegex = /```([a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/g;
+  let blockMatch;
+  while ((blockMatch = codeBlockRegex.exec(text)) !== null) {
+    const lang = (blockMatch[1] || '').toLowerCase();
+    const code = blockMatch[2].trim();
+    if (!code) continue;
+
+    let filePath = '';
+    const fileMatch = text.match(/\b([a-zA-Z0-9_\-\.\/]+\.(?:html|css|js|jsx|ts|tsx|py|json|md))\b/i);
+    if (fileMatch) {
+      filePath = fileMatch[1];
+    } else if (lang === 'html' || code.includes('<!DOCTYPE html>') || code.includes('<html')) {
+      filePath = 'index.html';
+    } else if (lang === 'py' || lang === 'python') {
+      filePath = 'main.py';
+    } else if (lang === 'jsx' || lang === 'tsx') {
+      filePath = 'src/App.jsx';
+    } else if (lang === 'css') {
+      filePath = 'style.css';
+    } else if (lang === 'js' || lang === 'javascript') {
+      filePath = 'index.js';
+    } else if (lang === 'json') {
+      filePath = 'package.json';
+    }
+
+    if (filePath) {
+      calls.push({
+        name: 'create_file',
+        args: { filePath, content: code }
+      });
+    }
+  }
+
+  return calls;
 }
 
 /**
@@ -295,21 +459,34 @@ export async function runAgent(userMessage, sessionId = 'default', runId, emit, 
       iteration++;
 
       // Build fresh system prompt on each iteration to reflect current state & dry-run mode
-      const systemPrompt = await buildSystemPrompt();
+      const systemPrompt = await buildSystemPrompt(null, model);
 
       // Assemble messages array with fresh system prompt at index 0 and sanitize structure
       const rawMessages = [
         { role: 'system', content: systemPrompt },
         ...history
       ];
-      const messages = sanitizeMessagesForProvider(rawMessages);
+      const isSmallOrNpuModel = Boolean(
+        model && (
+          model.includes('@NPU') ||
+          model.includes('1.2B') ||
+          model.includes('LFM') ||
+          model.includes('nano') ||
+          model.includes('small')
+        )
+      );
+
+      const messages = sanitizeMessagesForProvider(rawMessages, isSmallOrNpuModel);
 
       const requestPayload = {
         model,
         messages,
-        tools: getOpenAITools(),
         stream: true
       };
+
+      if (!isSmallOrNpuModel) {
+        requestPayload.tools = getOpenAITools();
+      }
 
       const effort = options.reasoningEffort || currentConfig.reasoningEffort;
       if (effort && effort !== 'none' && effort !== 'off') {
@@ -423,6 +600,20 @@ export async function runAgent(userMessage, sessionId = 'default', runId, emit, 
             if (tc.function?.name && !item.name) item.name = tc.function.name;
             if (tc.function?.arguments) item.args += tc.function.arguments;
           }
+        }
+      }
+
+      // If no API tool_calls were emitted, check if the model output tool calls in assistantText
+      if (toolCallsMap.size === 0 && assistantText) {
+        const textToolCalls = extractTextToolCalls(assistantText);
+        if (textToolCalls.length > 0) {
+          textToolCalls.forEach((tc, idx) => {
+            toolCallsMap.set(idx, {
+              id: `call_${Date.now()}_${idx}`,
+              name: tc.name,
+              args: typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args)
+            });
+          });
         }
       }
 

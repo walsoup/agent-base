@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agent Architect</title>
+  <title>Code Sandbox Agent</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,11 +15,11 @@
     <header class="top-bar">
       <div class="top-bar-left">
         <div class="brand">
-          <span class="brand-icon">⚡</span>
-          <span class="brand-title">AGENT ARCHITECT</span>
+          <span class="brand-icon">💻</span>
+          <span class="brand-title">CODE SANDBOX AGENT</span>
         </div>
         <div class="server-badge" id="stateBadge">
-          <div class="server-avatar" id="stateAvatar">🤖</div>
+          <div class="server-avatar" id="stateAvatar">⚡</div>
           <div class="server-info">
             <span class="server-name" id="stateName">Connecting...</span>
             <span class="server-meta" id="stateMeta">-- resources</span>
@@ -94,7 +94,7 @@
         <!-- DRY RUN TOGGLE -->
         <div class="dry-run-control">
           <label class="switch-container" title="When DRY RUN is ON, operations are simulated safely without making destructive changes.">
-            <input type="checkbox" id="dryRunToggle" checked />
+            <input type="checkbox" id="dryRunToggle" />
             <span class="switch-slider">
               <span class="switch-label-on">DRY RUN</span>
               <span class="switch-label-off">ARMED</span>
@@ -140,12 +140,12 @@
       <main class="chat-pane">
         <div class="messages-container" id="messagesContainer">
           <div class="welcome-card">
-            <h2>Welcome to Agent Architect</h2>
-            <p>I am your autonomous engineering agent loop. Provide a high-level goal, ask to inspect current state, or instruct me to execute actions and batch operations.</p>
+            <h2>Welcome to Code Sandbox Agent</h2>
+            <p>I am your sandboxed coding assistant for Python and modern WebDev (React). I create, edit, delete, and inspect files strictly inside an isolated workspace, and run code safely.</p>
             <div class="suggestion-chips">
-              <button class="chip" data-prompt="Inspect current workspace state and summarize available resources.">🔍 Inspect Current State</button>
-              <button class="chip" data-prompt="Create a new service resource named 'auth-service' and a database 'user-db'.">📦 Create New Resources</button>
-              <button class="chip" data-prompt="Execute a batch task to verify and archive all active project tasks.">⚡ Batch Process Tasks</button>
+              <button class="chip" data-prompt="Scaffold a Python CLI task management utility in main.py with unit tests in test_main.py.">🐍 Scaffold Python Utility & Tests</button>
+              <button class="chip" data-prompt="Create a modern React Counter and Todo component in src/TodoApp.jsx with CSS styling.">⚛️ Build React Component & CSS</button>
+              <button class="chip" data-prompt="List and inspect all current files and code inside the sandbox workspace.">📂 Inspect Sandbox Files</button>
             </div>
           </div>
         </div>
@@ -155,7 +155,7 @@
           <div class="input-wrapper">
             <textarea
               id="chatInput"
-              placeholder="Describe what you want the agent to do (e.g. 'Inspect state, add a Redis cache resource, and summarize')..."
+              placeholder="Instruct the coding agent (e.g. 'Build a React stopwatch component in src/Stopwatch.jsx' or 'Write a Python utility to parse JSON')..."
               rows="1"
             ></textarea>
             <button class="btn-cancel-run" id="btnCancelRun" style="display: none;" title="Stop / Cancel active run">
